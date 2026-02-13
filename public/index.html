@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radio Calico - Live Stream</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .player-container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 0.9em;
+        }
+
+        .player-wrapper {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        audio {
+            width: 100%;
+            outline: none;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .status {
+            text-align: center;
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 15px;
+            min-height: 20px;
+        }
+
+        .status.playing {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .status.error {
+            color: #e74c3c;
+        }
+
+        .volume-control {
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .volume-control label {
+            color: #666;
+            font-size: 0.9em;
+            min-width: 60px;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            height: 6px;
+            border-radius: 3px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .stream-info {
+            margin-top: 25px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            font-size: 0.85em;
+            color: #666;
+        }
+
+        .stream-info strong {
+            color: #333;
+        }
+
+        .now-playing {
+            margin-top: 25px;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+            border-radius: 15px;
+            border: 2px solid #667eea30;
+        }
+
+        .now-playing h2 {
+            color: #667eea;
+            font-size: 1.1em;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .track-info {
+            color: #333;
+        }
+
+        .track-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .track-artist {
+            font-size: 1em;
+            color: #667eea;
+            margin-bottom: 8px;
+        }
+
+        .track-details {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 10px;
+        }
+
+        .track-details span {
+            display: inline-block;
+            margin-right: 15px;
+        }
+
+        .rating-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #667eea30;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .rating-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .rating-btn {
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+
+        .rating-btn:hover:not(:disabled) {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .rating-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .rating-btn.thumbs-up {
+            border-color: #4caf50;
+            color: #4caf50;
+        }
+
+        .rating-btn.thumbs-up:hover:not(:disabled) {
+            background: #4caf50;
+            color: white;
+        }
+
+        .rating-btn.thumbs-up.active {
+            background: #4caf50;
+            color: white;
+            border-color: #4caf50;
+        }
+
+        .rating-btn.thumbs-down {
+            border-color: #f44336;
+            color: #f44336;
+        }
+
+        .rating-btn.thumbs-down:hover:not(:disabled) {
+            background: #f44336;
+            color: white;
+        }
+
+        .rating-btn.thumbs-down.active {
+            background: #f44336;
+            color: white;
+            border-color: #f44336;
+        }
+
+        .rating-counts {
+            display: flex;
+            gap: 15px;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .rating-count {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .rating-count.up {
+            color: #4caf50;
+        }
+
+        .rating-count.down {
+            color: #f44336;
+        }
+    </style>
+</head>
+<body>
+    <div class="player-container">
+        <h1>Radio Calico</h1>
+        <p class="subtitle">Live HLS Stream</p>
+
+        <div class="player-wrapper">
+            <audio id="audioPlayer" controls></audio>
+        </div>
+
+        <div class="controls">
+            <button id="playBtn">Play Stream</button>
+            <button id="stopBtn" disabled>Stop</button>
+        </div>
+
+        <div class="volume-control">
+            <label for="volumeSlider">Volume:</label>
+            <input type="range" id="volumeSlider" min="0" max="100" value="80">
+        </div>
+
+        <div class="status" id="status">Ready to play</div>
+
+        <div class="now-playing" id="nowPlaying">
+            <h2>♪ Now Playing</h2>
+            <div class="track-info">
+                <div class="track-title" id="trackTitle">Loading...</div>
+                <div class="track-artist" id="trackArtist"></div>
+                <div class="track-details">
+                    <span id="trackAlbum"></span>
+                    <span id="trackYear"></span>
+                </div>
+                <div class="rating-section">
+                    <div class="rating-buttons">
+                        <button class="rating-btn thumbs-up" id="thumbsUpBtn" title="Thumbs Up">👍</button>
+                        <button class="rating-btn thumbs-down" id="thumbsDownBtn" title="Thumbs Down">👎</button>
+                    </div>
+                    <div class="rating-counts">
+                        <div class="rating-count up">
+                            <span>👍</span>
+                            <span id="thumbsUpCount">0</span>
+                        </div>
+                        <div class="rating-count down">
+                            <span>👎</span>
+                            <span id="thumbsDownCount">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="stream-info">
+            <strong>Stream URL:</strong><br>
+            <span style="font-size: 0.9em; word-break: break-all;">https://d3d4yli4hf5bmh.cloudfront.net/hls/live.m3u8</span>
+        </div>
+    </div>
+
+    <script>
+        const audio = document.getElementById('audioPlayer');
+        const playBtn = document.getElementById('playBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const status = document.getElementById('status');
+        const volumeSlider = document.getElementById('volumeSlider');
+        const streamUrl = 'https://d3d4yli4hf5bmh.cloudfront.net/hls/live.m3u8';
+
+        let hls;
+
+        function updateStatus(message, type = '') {
+            status.textContent = message;
+            status.className = 'status ' + type;
+        }
+
+        function initPlayer() {
+            if (Hls.isSupported()) {
+                hls = new Hls({
+                    enableWorker: true,
+                    lowLatencyMode: true,
+                    backBufferLength: 90
+                });
+
+                hls.loadSource(streamUrl);
+                hls.attachMedia(audio);
+
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    updateStatus('Stream loaded successfully', 'playing');
+                    console.log('HLS manifest parsed');
+                });
+
+                hls.on(Hls.Events.ERROR, function(event, data) {
+                    console.error('HLS error:', data);
+                    if (data.fatal) {
+                        switch(data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                updateStatus('Network error. Attempting to recover...', 'error');
+                                hls.startLoad();
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                updateStatus('Media error. Attempting to recover...', 'error');
+                                hls.recoverMediaError();
+                                break;
+                            default:
+                                updateStatus('Fatal error. Cannot recover.', 'error');
+                                hls.destroy();
+                                break;
+                        }
+                    }
+                });
+            } else if (audio.canPlayType('application/vnd.apple.mpegurl')) {
+                // Native HLS support (Safari)
+                audio.src = streamUrl;
+                updateStatus('Using native HLS support', 'playing');
+            } else {
+                updateStatus('HLS is not supported in this browser', 'error');
+            }
+        }
+
+        playBtn.addEventListener('click', function() {
+            if (!hls && Hls.isSupported()) {
+                initPlayer();
+            }
+
+            audio.play().then(() => {
+                updateStatus('Now playing...', 'playing');
+                playBtn.disabled = true;
+                stopBtn.disabled = false;
+            }).catch(err => {
+                updateStatus('Failed to play: ' + err.message, 'error');
+                console.error('Play error:', err);
+            });
+        });
+
+        stopBtn.addEventListener('click', function() {
+            audio.pause();
+            audio.currentTime = 0;
+            updateStatus('Stopped', '');
+            playBtn.disabled = false;
+            stopBtn.disabled = true;
+        });
+
+        audio.addEventListener('playing', function() {
+            updateStatus('Now playing...', 'playing');
+            playBtn.disabled = true;
+            stopBtn.disabled = false;
+        });
+
+        audio.addEventListener('pause', function() {
+            updateStatus('Paused', '');
+            playBtn.disabled = false;
+            stopBtn.disabled = true;
+        });
+
+        audio.addEventListener('waiting', function() {
+            updateStatus('Buffering...', '');
+        });
+
+        // Volume control
+        volumeSlider.addEventListener('input', function() {
+            audio.volume = this.value / 100;
+        });
+
+        // Set initial volume
+        audio.volume = 0.8;
+
+        // Initialize player on page load
+        window.addEventListener('load', function() {
+            initPlayer();
+            fetchMetadata();
+            // Check for metadata updates every 2 seconds for near-instant song change detection
+            setInterval(fetchMetadata, 2000);
+        });
+
+        // Fetch and display current track metadata
+        const metadataUrl = 'https://d3d4yli4hf5bmh.cloudfront.net/metadatav2.json';
+        let currentTrack = null;
+        let currentSongKey = null;
+
+        // Get or create user ID
+        function getUserId() {
+            let userId = localStorage.getItem('radiocalico_user_id');
+            if (!userId) {
+                userId = 'user_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+                localStorage.setItem('radiocalico_user_id', userId);
+            }
+            return userId;
+        }
+
+        const userId = getUserId();
+
+        // Create a unique key for the song
+        function createSongKey(artist, title) {
+            return btoa(`${artist}|||${title}`).replace(/[^a-zA-Z0-9]/g, '');
+        }
+
+        async function fetchMetadata() {
+            try {
+                const response = await fetch(metadataUrl, {
+                    cache: 'no-cache' // Ensure we always get fresh data
+                });
+                const data = await response.json();
+
+                // Check if the track has changed
+                const trackId = `${data.artist}-${data.title}`;
+                if (currentTrack !== trackId) {
+                    // New song detected!
+                    currentTrack = trackId;
+
+                    // Update the display with animation
+                    const nowPlayingDiv = document.getElementById('nowPlaying');
+                    nowPlayingDiv.style.transition = 'opacity 0.3s';
+                    nowPlayingDiv.style.opacity = '0.5';
+
+                    setTimeout(() => {
+                        document.getElementById('trackTitle').textContent = data.title || 'Unknown Title';
+                        document.getElementById('trackArtist').textContent = data.artist || 'Unknown Artist';
+                        document.getElementById('trackAlbum').textContent = data.album ? `📀 ${data.album}` : '';
+                        document.getElementById('trackYear').textContent = data.date ? `📅 ${data.date}` : '';
+
+                        nowPlayingDiv.style.opacity = '1';
+                        console.log('🎵 Song changed:', data.artist, '-', data.title);
+
+                        // Update ratings for the new song
+                        currentSongKey = createSongKey(data.artist, data.title);
+                        fetchRatings(currentSongKey, data.artist, data.title);
+                    }, 150);
+                }
+            } catch (error) {
+                console.error('Failed to fetch metadata:', error);
+                document.getElementById('trackTitle').textContent = 'Unable to load track info';
+                document.getElementById('trackArtist').textContent = '';
+            }
+        }
+
+        // Fetch ratings for the current song
+        async function fetchRatings(songKey, artist, title) {
+            try {
+                // Get rating counts
+                const response = await fetch(`/api/ratings/${songKey}`);
+                const ratings = await response.json();
+
+                document.getElementById('thumbsUpCount').textContent = ratings.thumbs_up || 0;
+                document.getElementById('thumbsDownCount').textContent = ratings.thumbs_down || 0;
+
+                // Check if user has already rated this song
+                const userResponse = await fetch(`/api/ratings/${songKey}/user/${userId}`);
+                const userData = await userResponse.json();
+
+                const thumbsUpBtn = document.getElementById('thumbsUpBtn');
+                const thumbsDownBtn = document.getElementById('thumbsDownBtn');
+
+                // Reset button states
+                thumbsUpBtn.classList.remove('active');
+                thumbsDownBtn.classList.remove('active');
+                thumbsUpBtn.disabled = false;
+                thumbsDownBtn.disabled = false;
+
+                // If user has rated, show which one and disable buttons
+                if (userData.hasRated) {
+                    if (userData.ratingType === 'up') {
+                        thumbsUpBtn.classList.add('active');
+                    } else {
+                        thumbsDownBtn.classList.add('active');
+                    }
+                    thumbsUpBtn.disabled = true;
+                    thumbsDownBtn.disabled = true;
+                }
+            } catch (error) {
+                console.error('Failed to fetch ratings:', error);
+            }
+        }
+
+        // Submit a rating
+        async function submitRating(ratingType) {
+            if (!currentSongKey) return;
+
+            const artist = document.getElementById('trackArtist').textContent;
+            const title = document.getElementById('trackTitle').textContent;
+
+            try {
+                const response = await fetch('/api/ratings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        songKey: currentSongKey,
+                        artist: artist,
+                        title: title,
+                        ratingType: ratingType,
+                        userId: userId
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    // Update the counts
+                    document.getElementById('thumbsUpCount').textContent = result.thumbs_up || 0;
+                    document.getElementById('thumbsDownCount').textContent = result.thumbs_down || 0;
+
+                    // Highlight the selected button and disable both
+                    const thumbsUpBtn = document.getElementById('thumbsUpBtn');
+                    const thumbsDownBtn = document.getElementById('thumbsDownBtn');
+
+                    if (ratingType === 'up') {
+                        thumbsUpBtn.classList.add('active');
+                    } else {
+                        thumbsDownBtn.classList.add('active');
+                    }
+
+                    thumbsUpBtn.disabled = true;
+                    thumbsDownBtn.disabled = true;
+
+                    console.log('✅ Rating submitted:', ratingType);
+                } else {
+                    console.error('Failed to submit rating:', result.error);
+                    alert(result.error || 'Failed to submit rating');
+                }
+            } catch (error) {
+                console.error('Error submitting rating:', error);
+                alert('Failed to submit rating');
+            }
+        }
+
+        // Add event listeners for rating buttons
+        document.getElementById('thumbsUpBtn').addEventListener('click', () => submitRating('up'));
+        document.getElementById('thumbsDownBtn').addEventListener('click', () => submitRating('down'));
+    </script>
+</body>
+</html>
