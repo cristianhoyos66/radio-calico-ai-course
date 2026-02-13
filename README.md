@@ -1,5 +1,8 @@
 # Radio Calico™
 
+[![GitHub](https://img.shields.io/badge/GitHub-radio--calico--ai--course-blue?logo=github)](https://github.com/cristianhoyos66/radio-calico-ai-course)
+[![License](https://img.shields.io/badge/License-All%20Rights%20Reserved-red.svg)](LICENSE)
+
 A web-based HLS audio stream player with real-time metadata display and interactive song rating functionality.
 
 ## Features
