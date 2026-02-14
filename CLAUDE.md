@@ -19,6 +19,15 @@ The server runs on http://localhost:3000 by default (configurable via PORT envir
 npm install
 ```
 
+**Run tests:**
+```bash
+npm test                  # Run all tests
+npm run test:backend      # Run backend tests only
+npm run test:frontend     # Run frontend tests only
+npm run test:watch        # Run tests in watch mode
+npm run test:coverage     # Run tests with coverage report
+```
+
 ## Architecture
 
 ### Stack
@@ -135,7 +144,170 @@ radiocalico/
 ├── database.db            # SQLite database file (auto-created)
 ├── public/
 │   └── index.html         # Complete frontend SPA
-└── package.json
+├── tests/
+│   ├── backend/
+│   │   ├── db.test.js     # Database layer tests
+│   │   └── api.test.js    # API endpoint tests
+│   └── frontend/
+│       └── ratings.test.js # Frontend ratings logic tests
+├── package.json
+└── jest.config.js         # Jest configuration
+```
+
+## Testing
+
+### Testing Framework
+
+**Stack**
+- **Test Runner**: Jest (unified for backend and frontend)
+- **API Testing**: Supertest for HTTP endpoint testing
+- **Frontend Testing**: jsdom for DOM environment simulation
+- **Database Testing**: In-memory SQLite (`:memory:`) for isolated tests
+- **Mocking**: Jest's built-in mocking for fetch and external dependencies
+
+### Test Organization
+
+**Backend Tests** (`tests/backend/`)
+- `db.test.js` - Database layer unit tests
+- `api.test.js` - API endpoint integration tests
+
+**Frontend Tests** (`tests/frontend/`)
+- `ratings.test.js` - Rating logic, song detection, localStorage handling
+
+### Testing Principles
+
+When creating tests, ALWAYS follow these guidelines:
+
+1. **Backend Database Tests**
+   - Use in-memory database (`:memory:`) for isolation
+   - Create fresh database instance for each test suite
+   - Test synchronous operations (no async/await in db.js)
+   - Verify transaction integrity for multi-step operations
+   - Test edge cases: duplicate votes, missing data, invalid inputs
+
+2. **Backend API Tests**
+   - Use Supertest for endpoint testing
+   - Mock database layer to isolate API logic
+   - Test all HTTP status codes: 200, 400, 500
+   - Verify request validation (missing fields, invalid types)
+   - Test error handling and error messages
+
+3. **Frontend Tests**
+   - Use jsdom for DOM environment
+   - Mock fetch API calls to backend
+   - Mock localStorage for user ID persistence
+   - Test rating button state management
+   - Test song change detection logic
+   - Verify base64 encoding consistency (btoa for song keys)
+
+4. **Test Structure**
+   - Use descriptive test names: `it('should prevent duplicate votes from same user')`
+   - Group related tests with `describe` blocks
+   - Use `beforeEach`/`afterEach` for setup/teardown
+   - Keep tests independent (no shared state between tests)
+
+5. **Coverage Requirements**
+   - Aim for >80% code coverage
+   - Critical paths (rating submission) must have 100% coverage
+   - Test both success and failure scenarios
+   - Test boundary conditions and edge cases
+
+### Key Test Scenarios
+
+**Database Layer Tests (db.test.js)**
+```javascript
+describe('getSongRatings', () => {
+  // Test: returns default values for non-existent song
+  // Test: returns correct counts for existing song
+})
+
+describe('addOrUpdateRating', () => {
+  // Test: creates new song record with first rating
+  // Test: increments correct counter (thumbs_up vs thumbs_down)
+  // Test: prevents duplicate votes from same user
+  // Test: creates user_ratings record
+  // Test: transaction rollback on error
+})
+
+describe('getUserRating', () => {
+  // Test: returns null for user who hasn't rated
+  // Test: returns correct rating type for user who has rated
+})
+```
+
+**API Endpoint Tests (api.test.js)**
+```javascript
+describe('GET /api/ratings/:songKey', () => {
+  // Test: returns 200 with rating data
+  // Test: returns default values for new song
+})
+
+describe('POST /api/ratings', () => {
+  // Test: returns 201 with updated ratings on success
+  // Test: returns 400 when missing required fields
+  // Test: returns 400 when user already rated
+  // Test: returns 400 for invalid ratingType
+  // Test: returns 500 on database error
+})
+
+describe('GET /api/ratings/:songKey/user/:userId', () => {
+  // Test: returns hasRated: false for new user
+  // Test: returns hasRated: true with rating type for existing user
+})
+```
+
+**Frontend Tests (ratings.test.js)**
+```javascript
+describe('Rating Logic', () => {
+  // Test: generates correct song key (base64 encoding)
+  // Test: submits rating with correct payload
+  // Test: disables buttons after rating submission
+  // Test: highlights selected button
+  // Test: handles API errors gracefully
+})
+
+describe('Song Change Detection', () => {
+  // Test: detects song change when artist/title differ
+  // Test: fetches ratings for new song
+  // Test: resets rating buttons for new song
+})
+
+describe('User Identification', () => {
+  // Test: generates user ID if not in localStorage
+  // Test: reuses existing user ID from localStorage
+  // Test: uses correct localStorage key (radiocalico_user_id)
+})
+```
+
+### Test Data
+
+**Standard Test Song**
+```javascript
+const TEST_SONG = {
+  artist: 'Test Artist',
+  title: 'Test Song',
+  songKey: btoa('Test Artist|||Test Song'), // "VGVzdCBBcnRpc3R8fHxUZXN0IFNvbmc="
+  userId: 'user_test_1234567890'
+};
+```
+
+### Running Tests
+
+- Tests must pass before commits
+- Use watch mode during development: `npm run test:watch`
+- Check coverage before submitting PRs: `npm run test:coverage`
+- Backend and frontend tests can run in parallel
+
+### Dependencies
+
+Required dev dependencies:
+```json
+{
+  "jest": "^29.7.0",
+  "supertest": "^7.0.0",
+  "jsdom": "^25.0.0",
+  "@types/jest": "^29.5.0"
+}
 ```
 
 ## Important Notes
